@@ -1,8 +1,11 @@
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder
+import sklearn.preprocessing
+from sklearn.preprocessing import LabelEncoder, normalize
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
 import numpy as np
+
 
 def get_tf(arr):
     # res = np.ndarray(shape=arr.shape)
@@ -21,6 +24,18 @@ def get_idf(arr):
     return np.log((N + 1) / (df + 1)) + 1
 
 
+def get_confusion_matrix(y_true, y_pred):
+    tp = np.sum(y_pred & y_true)
+    fp = np.sum(y_pred[y_true == False])
+    tn = np.sum(~y_pred & ~y_true)
+    fn = np.sum(~y_pred[y_true == True])
+    return np.array([[tp, fp], [fn, tn]])
+
+
+def get_accuracy(confusion_matrix):
+    return np.trace(confusion_matrix) / np.sum(confusion_matrix.flatten())
+
+
 def main():
     # чтение данных
     df = pd.read_csv("data/spam.csv", usecols=[0, 1], encoding='latin-1')
@@ -35,31 +50,38 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(df['v2'].values, df['v1'].values, test_size=0.33,
                                                         random_state=42)
 
-    # преобразование текста в вектор признаков
-    vectorizer = CountVectorizer(analyzer='word', ngram_range=(2, 2), stop_words='english')
+    # преобразование текста в вектор признаков (Bag of Words)
+    vectorizer = CountVectorizer(analyzer='word', ngram_range=(2, 2), stop_words='english', lowercase=True)
     X_train = vectorizer.fit_transform(X_train).todense()
+    X_test = vectorizer.transform(X_test).todense()
+
+    print(vectorizer.vocabulary_)
 
     tokens = vectorizer.vocabulary_.keys()
     print(len(tokens))
 
     idf = get_idf(X_train)
     tf = get_tf(X_train)
-    print(tf.shape)
-    print(idf.shape)
+    # print(tf.shape)
+    # print(idf.shape)
 
-    print(type(idf))
+    res_train = np.multiply(tf, idf)
+    res_train = normalize(res_train)
 
-    res = np.multiply(tf, idf)
+    # tfidf = TfidfTransformer(norm=None)
+    # X_train = tfidf.fit_transform(X_train).todense()
+    # X_test = tfidf.transform(X_test).todense()
 
-    tfidf = TfidfTransformer(norm=None)
-    X_train = tfidf.fit_transform(X_train).todense()
+    classificator = MultinomialNB()
+    classificator.fit(X_train, y_train)
 
-    for i in range(res.shape[0]):
-        for j in range(res.shape[1]):
-            if res[i, j] != X_train[i, j]:
-                print(tf[i, j] * idf[j])
-                print(res[i, j], X_train[i, j], i, j, tf[i, j], idf[j], tfidf.idf_[j])
+    tf = get_tf(X_test)
+    res_test = np.multiply(tf, idf)
+    X_test = normalize(res_test)
 
+    y_pred = classificator.predict(X_test)
+    confusion_matrix = get_confusion_matrix(y_test.astype(bool), y_pred.astype(bool))
+    print(get_accuracy(confusion_matrix))
 
 
 main()
