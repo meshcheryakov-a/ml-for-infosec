@@ -55,18 +55,16 @@ def main():
     X_train = vectorizer.fit_transform(X_train).todense()
     X_test = vectorizer.transform(X_test).todense()
 
-    print(vectorizer.vocabulary_)
-
-    tokens = vectorizer.vocabulary_.keys()
-    print(len(tokens))
+    # print(vectorizer.vocabulary_)
+    # tokens = vectorizer.vocabulary_.keys()
+    # print(len(tokens))
 
     idf = get_idf(X_train)
     tf = get_tf(X_train)
     # print(tf.shape)
     # print(idf.shape)
 
-    res_train = np.multiply(tf, idf)
-    res_train = normalize(res_train)
+    X_train = normalize(np.multiply(tf, idf))
 
     # tfidf = TfidfTransformer(norm=None)
     # X_train = tfidf.fit_transform(X_train).todense()
@@ -76,8 +74,7 @@ def main():
     classificator.fit(X_train, y_train)
 
     tf = get_tf(X_test)
-    res_test = np.multiply(tf, idf)
-    X_test = normalize(res_test)
+    X_test = normalize(np.multiply(tf, idf))
 
     y_pred = classificator.predict(X_test)
     confusion_matrix = get_confusion_matrix(y_test.astype(bool), y_pred.astype(bool))
