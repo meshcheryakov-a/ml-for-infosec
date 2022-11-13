@@ -2,9 +2,17 @@ import pandas as pd
 import sklearn.preprocessing
 from sklearn.preprocessing import LabelEncoder, normalize
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
 import numpy as np
+
+
+def get_bigrams_frequencies(vocabulary, arr):
+    tokens_frequencies_arr = np.sum(arr, axis=0)
+    tokens_frequencies_dict = {}
+    tokens_frequencies_dict.update((key, tokens_frequencies_arr[vocabulary[key]]) for key in vocabulary.keys())
+    return dict(sorted(tokens_frequencies_dict.items(), key=lambda item: item[1], reverse=True))
 
 
 def get_tf(arr):
@@ -46,39 +54,51 @@ def main():
     df['v1'] = le.fit_transform(df['v1'])
 
     print(df)
+
     # разбиваем данные на обучающую и тестовую выборки
     X_train, X_test, y_train, y_test = train_test_split(df['v2'].values, df['v1'].values, test_size=0.33,
                                                         random_state=42)
 
     # преобразование текста в вектор признаков (Bag of Words)
+    # также здесь выполняется токенизация, убираются стоп-слова, выполняется нормализация
     vectorizer = CountVectorizer(analyzer='word', ngram_range=(2, 2), stop_words='english', lowercase=True)
-    X_train = vectorizer.fit_transform(X_train).todense()
-    X_test = vectorizer.transform(X_test).todense()
+    X_train = vectorizer.fit_transform(X_train).toarray()
+    X_test = vectorizer.transform(X_test).toarray()
 
-    # print(vectorizer.vocabulary_)
-    # tokens = vectorizer.vocabulary_.keys()
-    # print(len(tokens))
+    # print(vectorizer.get_stop_words())
 
+    # удаляем пустые строки (нет вхождений ни одного токена)
+    indices_to_remove = np.where(np.sum(X_train, axis=1) == 0)
+    X_train = np.delete(X_train, indices_to_remove, axis=0)
+    y_train = np.delete(y_train, indices_to_remove, axis=0)
+
+    # наиболее встречающиеся биграммы
+    bigrams_frequencies = get_bigrams_frequencies(vectorizer.vocabulary_, X_train)
+    print("\nbigram", ":", "frequency")
+    for bigram in list(bigrams_frequencies.keys())[:20]:
+        print(bigram, ":", bigrams_frequencies[bigram])
+
+    # вычисление tf-idf для обучающей выборки
     idf = get_idf(X_train)
     tf = get_tf(X_train)
-    # print(tf.shape)
-    # print(idf.shape)
-
     X_train = normalize(np.multiply(tf, idf))
 
-    # tfidf = TfidfTransformer(norm=None)
-    # X_train = tfidf.fit_transform(X_train).todense()
-    # X_test = tfidf.transform(X_test).todense()
-
-    classificator = MultinomialNB()
-    classificator.fit(X_train, y_train)
-
+    # вычисялем tf-idf для тестовой выборки
     tf = get_tf(X_test)
     X_test = normalize(np.multiply(tf, idf))
 
+    # используем Байессовский классификатор для определения спама
+    classificator = MultinomialNB()
+    classificator.fit(X_train, y_train)
+
     y_pred = classificator.predict(X_test)
+
+    # оцениваем качество классификации с помощью метрики accuracy
     confusion_matrix = get_confusion_matrix(y_test.astype(bool), y_pred.astype(bool))
-    print(get_accuracy(confusion_matrix))
+
+    print("\nconfusion matrix:\n", confusion_matrix)
+    print("\naccuracy:", get_accuracy(confusion_matrix))
+    print("\naccuracy (sklearn):", accuracy_score(y_test, y_pred))
 
 
 main()
