@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score
 import numpy as np
+import nltk
+import re
 
 
 def get_bigrams_frequencies(vocabulary, arr):
@@ -44,6 +46,16 @@ def get_accuracy(confusion_matrix):
     return np.trace(confusion_matrix) / np.sum(confusion_matrix.flatten())
 
 
+def preprocess_text(text):
+    new_text = re.sub(r'[^\w\s]', ' ', text)
+    tokens = nltk.word_tokenize(new_text)
+    tokens = [token.lower() for token in tokens]
+    tokens = [i for i in tokens if (i not in nltk.corpus.stopwords.words('english'))]
+    stemmer = nltk.stem.SnowballStemmer('english')
+    tokens = [stemmer.stem(token) for token in tokens]
+    return ' '.join(tokens)
+
+
 def main():
     # чтение данных
     df = pd.read_csv("data/spam.csv", usecols=[0, 1], encoding='latin-1')
@@ -55,13 +67,15 @@ def main():
 
     print(df)
 
+    # здесь выполняется токенизация, убираются стоп-слова, выполняется нормализация, стемминг
+    df['v2'] = df['v2'].apply(preprocess_text)
+
     # разбиваем данные на обучающую и тестовую выборки
     X_train, X_test, y_train, y_test = train_test_split(df['v2'].values, df['v1'].values, test_size=0.33,
-                                                        random_state=42)
+                                                        random_state=55)
 
     # преобразование текста в вектор признаков (Bag of Words)
-    # также здесь выполняется токенизация, убираются стоп-слова, выполняется нормализация
-    vectorizer = CountVectorizer(analyzer='word', ngram_range=(2, 2), stop_words='english', lowercase=True)
+    vectorizer = CountVectorizer(ngram_range=(2, 2))
     X_train = vectorizer.fit_transform(X_train).toarray()
     X_test = vectorizer.transform(X_test).toarray()
 
