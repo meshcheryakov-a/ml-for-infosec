@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 import imageio
@@ -8,7 +9,6 @@ from skimage import io
 from sort_tracker import SortTracker
 from configuration import BaseConfig
 import cv2
-from utils import filter_car_bboxes
 
 class ObjectTracker:
     def __init__(self, **kwargs):
@@ -46,10 +46,6 @@ class ObjectTracker:
             if car_bboxes.shape[0] == 0:
                 continue
             else:
-
-                # убираем повторяющиеся объекты
-                car_bboxes = filter_car_bboxes(car_bboxes)
-
                 tracker_start_time = time.time()
                 tracked_array = np.round(tracker.update(np.column_stack([car_bboxes[:, 1], car_bboxes[:, 0], car_bboxes[:, 3], car_bboxes[:, 2]]))).astype(int)
                 print(car_bboxes)
@@ -69,10 +65,6 @@ class ObjectTracker:
                     y_bottom = min(tracked_array[car_id, 3] + _BORDER_CROP, frame.shape[0])
                     y_top = max(tracked_array[car_id, 1] - _BORDER_CROP, 0)
                     print(x_left, x_right, y_bottom, y_top, tracked_array[car_id, 4])
-
-                    # выделяем объекты на кадре
-                    cv2.rectangle(new_frame, (x_left, y_top), (x_right, y_bottom), (0, 255, 0), 3)
-
                     distance_temp = (np.array(np.abs(car_bboxes[:, 2] - tracked_array[car_id, 3]) +
                                               np.abs(car_bboxes[:, 3] - tracked_array[car_id, 2]) +
                                               np.abs(car_bboxes[:, 0] - tracked_array[car_id, 1]) +
@@ -80,12 +72,6 @@ class ObjectTracker:
                     d_img_to_draw = (frame[y_top:y_bottom:, x_left:x_right, :])
                     if (d_img_to_draw.shape[0] > 0) and (d_img_to_draw.shape[1] > 0):
                         io.imsave(os.path.join(_DETECTS_DIR, 'car_id_{}_{}.png'.format(tracked_array[car_id, 4], counter)), d_img_to_draw / d_img_to_draw.max())
-
-                # выводим кадр с помеченными объектами
-                cv2.namedWindow("output", cv2.WINDOW_NORMAL)
-                cv2.imshow("output", new_frame)
-                cv2.waitKey(500)
-
             if counter % 10 == 0:
                 trajectories.to_csv(os.path.join(_PROJECT_DIR, 'trajectories.csv'), sep=';')
             print("--- Затрачено на кадр № {counter} --- {time:.3f} seconds --- \n".format(counter=counter, time=time.time() - read_start_time))
