@@ -18,11 +18,6 @@ def get_bigrams_frequencies(vocabulary, arr):
 
 
 def get_tf(arr):
-    # res = np.ndarray(shape=arr.shape)
-    # for i in range(arr.shape[0]):
-    #     sum = np.sum(arr[i])
-    #     res[i] = arr[i] / (sum if sum != 0 else 1)
-    # return res
     return arr
 
 
