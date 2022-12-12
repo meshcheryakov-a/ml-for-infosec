@@ -68,7 +68,7 @@ def main():
 
     N = 100
     M = 200
-    moving_objects = get_moving_objects(df.values, 100, 200)
+    moving_objects = get_moving_objects(df.values, N, M)
     print(f"ID объектов, которые за {N} кадров сдвинулись не более чем на {M} пикселей:\n", moving_objects.flatten())
 
 
