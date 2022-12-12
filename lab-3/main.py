@@ -44,7 +44,7 @@ def get_moving_objects(objects, N, M):
         frames_with_object = objects[objects[:, 4] == object_id]
         if len(frames_with_object) >= N:
             move = np.sum(np.abs(np.array(get_object_centre(frames_with_object[0])) -
-                                  np.array(get_object_centre(frames_with_object[N - 1]))))
+                                 np.array(get_object_centre(frames_with_object[N - 1]))))
             if move <= M:
                 moving_objects.append(object_id)
     return np.array(moving_objects)
@@ -53,18 +53,23 @@ def get_moving_objects(objects, N, M):
 def main():
     df = pd.read_csv("MyProject/trajectories.csv", sep=';')
     df = df.drop(columns=['Unnamed: 0'])
-    max_frames = 3600
-    df = df[df['frame'] < max_frames]  # берем 2 минуты видео исходя из частоты 30 к/с
-    print(df)
+    max_frames = 3600  # берем 2 минуты видео исходя из частоты 30 к/с
+    df = df[df['frame'] < max_frames]
+    # print(df)
 
-    count = count_objects_bigger_size(df.values, 200, 100)
-    print(count)
+    max_length = 200
+    max_width = 100
+    count = count_objects_bigger_size(df.values, max_length, max_width)
+    print(f"Количество объектов с размерами больше {max_length}x{max_width} (ДxШ): {count}")
 
-    frames = get_frames_with_objects(df.values, max_frames, 50)
-    print(frames)
+    N = 50
+    frames = get_frames_with_objects(df.values, max_frames, N)
+    print(f"Номера кадров, когда в кадре было более {N} объектов одновременно:\n", frames.flatten())
 
+    N = 100
+    M = 200
     moving_objects = get_moving_objects(df.values, 100, 200)
-    print(moving_objects)
+    print(f"ID объектов, которые за {N} кадров сдвинулись не более чем на {M} пикселей:\n", moving_objects.flatten())
 
 
 main()
